@@ -1,0 +1,34 @@
+{
+    "name": "thoule/easyverein",
+    "description": "easyVerein-Anbindung fuer die Thoule-Laravel-Apps: API-Client mit Paginierung, automatische Key-Rotation, Mehr-Instanz-Faehigkeit",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.5",
+        "laravel/framework": "^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^4.0",
+        "laravel/pint": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Thoule\\EasyVerein\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Thoule\\EasyVerein\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Thoule\\EasyVerein\\EasyVereinServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
