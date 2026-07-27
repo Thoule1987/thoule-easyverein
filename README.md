@@ -105,6 +105,8 @@ Mit einem echten Key geprüft, nicht aus der Dokumentation abgeleitet:
 | Mitgliedsfelder | `id`, `membershipNumber`, `resignationDate`, `contactDetails`, `emailOrUserName` |
 | Namen | **nicht im Datensatz** – nur hinter der `contactDetails`-URL (`firstName`/`familyName`) |
 | Key-Ablauf | 30 Tage; `GET /refresh-token` rotiert, **altes Token sofort ungültig** |
+| Fehlerfall | **HTTP 200** mit `{success, code, msg}` als `application/json` – auch bei einer URL, die auf `.png` endet |
+| Bilder | `/app/image/<ID>.png` (Weboberfläche, nicht die API). Kein Token nötig – aber je Ressource kann die Absage kommen, unabhängig von Rolle und Rechten |
 
 Belastbare Zahl aus dem Betrieb: 426 Mitglieder = **93 Seiten**. Ein vollständiger Lauf inklusive
 Namensauflösung dauert Minuten und gehört deshalb in die Queue, nicht in einen HTTP-Request.
@@ -128,6 +130,18 @@ erste Lauf die Diagnose selbst liefert.
 
 **Folge-URLs aus der Antwort sind Fremdangaben.** `next` und `contactDetails` werden gegen den
 erwarteten Host geprüft, bevor der Client sie mitsamt `Authorization`-Header abruft.
+
+**Der Statuscode ist kein Erfolgssignal.** easyVerein antwortet auch im Fehlerfall mit `200` und
+schickt die Absage im Rumpf – gemessen an `/app/image/…`, das bei fehlenden Rechten `200` plus
+`{success:false, code:403, msg:…}` liefert. Wer nur `$response->failed()` prüft, hält eine
+Fehlermeldung für Nutzlast. Beim Lesen von Binärdaten deshalb **immer den Content-Type gegen
+eine Positivliste prüfen** und den Inhalt gegenlesen.
+
+**Ein Fehlerumschlag beweist nicht, dass Anmeldedaten fehlen.** Aus `{success, code, msg}` wurde
+in KAST zunächst geschlossen, der Endpunkt brauche Authentifizierung; der Abruf bekam daraufhin
+das OIDC-Access-Token mit. Die Messung widerlegte das – die Bilder kommen ohne jeden Header
+genauso – und die Änderung wurde zurückgenommen. Ein falsch gedeuteter Fehler hätte hier zu
+einer unnötigen Token-Weitergabe geführt.
 
 ## Ein Key pro Installation
 
