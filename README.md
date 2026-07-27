@@ -3,9 +3,72 @@
 easyVerein-Anbindung für die Thoule-Laravel-Apps. Ersetzt vier getrennt gewachsene
 Implementierungen durch eine.
 
-> **Status: Gerüst.** Der Code wird aus `karlsruher-spieletage` extrahiert, wo er seit dem
-> 27.07.2026 gegen die echte API verifiziert läuft. Bis dahin ist dieses Repo eine Beschreibung,
-> keine Bibliothek.
+> **Status: v0.1.0 – extrahiert, getestet, noch in keiner App eingesetzt.** Der Code stammt aus
+> `karlsruher-spieletage`, wo er seit dem 27.07.2026 gegen die echte API verifiziert läuft
+> (426 Mitglieder, 93 Seiten, drei volle Läufe). 36 Tests gegen `orchestra/testbench`, Pint und
+> Larastan Level 5 grün. Die `0.x`-Version ist Absicht: Erst wenn die erste App tatsächlich
+> darauf läuft (TASK-130), ist die Schnittstelle erprobt – dann folgt `v1.0.0`.
+
+## Installation
+
+```bash
+composer require thoule/easyverein
+php artisan vendor:publish --tag=easyverein-config
+php artisan vendor:publish --tag=easyverein-migrations   # entfällt, wenn die Tabelle schon existiert
+php artisan migrate
+```
+
+Die Migration läuft **nicht** automatisch mit: Zwei der Apps haben `easyverein_tokens` bereits
+über eine eigene Migration angelegt, und eine mitlaufende Paket-Migration würde dort beim
+nächsten `migrate` über eine existierende Tabelle stolpern.
+
+## Verwendung
+
+**Liste über alle Seiten lesen.** `datensaetze()` ist ein Generator und lädt Seite für Seite
+nach – bei 426 Mitgliedern sind das 93 Anfragen, also nichts für einen HTTP-Request:
+
+```php
+use Thoule\EasyVerein\Contracts\InstanzQuelle;
+use Thoule\EasyVerein\EasyVereinClient;
+
+foreach (app(InstanzQuelle::class)->alle() as $instanz) {
+    foreach (app(EasyVereinClient::class)->datensaetze($instanz, 'member/') as $mitglied) {
+        // $mitglied['membershipNumber'], ['resignationDate'], ['contactDetails'] …
+    }
+}
+
+// Was ausgelassen wurde und warum – sonst sieht eine übersprungene Instanz aus wie eine
+// ohne Daten:
+app(InstanzQuelle::class)->uebersprungene();   // ['abteilung' => 'nicht konfiguriert']
+```
+
+**Token-Rotation.** Der Client erneuert selbsttätig, sobald eine Antwort den Header
+`tokenRefreshNeeded` setzt. Als Sicherheitsnetz gehört zusätzlich in den Scheduler:
+
+```php
+Schedule::command('easyverein:token-refresh')->daily();
+```
+
+**OIDC-Login.** Socialite-Treiber `easyverein`, mit PKCE:
+
+```php
+return Socialite::driver('easyverein')->redirect();
+```
+
+**Gruppen → Rollen.** Das Paket wertet `groups` nicht aus – die Zuordnung ist in jeder App
+anders. Wer spatie nutzt, hängt den mitgelieferten Mapper an; alle anderen einen eigenen
+Listener auf dasselbe Event:
+
+```php
+Event::listen(BenutzerAngemeldet::class, SpatieGruppenMapper::class);
+```
+
+**Nähte überschreiben.** Kommen die Zugangsdaten nicht aus `.env` (bring-and-buy hält sie in
+einer `settings`-Tabelle), im eigenen `AppServiceProvider`:
+
+```php
+$this->app->singleton(InstanzQuelle::class, EigeneQuelle::class);
+```
 
 ## Warum es dieses Paket gibt
 
