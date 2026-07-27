@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Laravel\Socialite\Two\User;
 use Thoule\EasyVerein\EasyVereinException;
 use Thoule\EasyVerein\Socialite\EasyVereinProvider;
 
@@ -164,4 +165,27 @@ it('baut den Treiber mit vollstaendiger Konfiguration', function () {
 
     expect(app('Laravel\Socialite\Contracts\Factory')->driver('easyverein'))
         ->toBeInstanceOf(EasyVereinProvider::class);
+});
+
+it('normalisiert fehlende Rohdaten zu einem leeren Array', function () {
+    // Socialites getRaw() behauptet `array`, liefert aber `null`, solange niemand setRaw()
+    // aufgerufen hat. In KAST hat das am 27.07.2026 den kompletten Login mit einem
+    // TypeError abgebrochen – mitten im Anmeldevorgang, nach dem Anlegen des Kontos.
+    $ohneRaw = (new User)->map(['id' => 'sub-1']);
+
+    expect(EasyVereinProvider::rohdaten($ohneRaw))->toBe([])
+        ->and(EasyVereinProvider::rohdaten(null))->toBe([])
+        ->and(EasyVereinProvider::rohdaten('kaputt'))->toBe([]);
+});
+
+it('liefert die Rohdaten, wenn sie gesetzt sind', function () {
+    $mitRaw = (new User)->setRaw(['sub' => 'x', 'groups' => ['Vorstand']]);
+
+    expect(EasyVereinProvider::rohdaten($mitRaw))->toHaveKey('groups')
+        ->and(EasyVereinProvider::gruppen(EasyVereinProvider::rohdaten($mitRaw)))->toBe(['Vorstand']);
+});
+
+it('behandelt eine unerwartete Userinfo als gruppenlos, statt zu werfen', function () {
+    expect(EasyVereinProvider::gruppen(null))->toBe([])
+        ->and(EasyVereinProvider::gruppen('kaputt'))->toBe([]);
 });

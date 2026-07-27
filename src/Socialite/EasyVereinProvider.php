@@ -114,16 +114,46 @@ class EasyVereinProvider extends AbstractProvider implements ProviderInterface
     }
 
     /**
+     * Die vollstaendige Userinfo eines Socialite-Benutzers, als Array.
+     *
+     * **Warum das nicht einfach `getRaw()` ist.** Socialites Signatur behauptet `array`,
+     * tatsaechlich kommt `null` zurueck, solange niemand `setRaw()` aufgerufen hat. Der echte
+     * Provider tut das immer – ein per `map()` gebautes Benutzer-Objekt (wie in Feature-Tests
+     * ueblich) nicht, und der Login scheitert dann an einem TypeError mitten im
+     * Anmeldevorgang. Am 27.07.2026 in KAST genau so aufgetreten.
+     *
+     * Am Aufrufort laesst sich das schlecht abfangen: Ein `?? []` meldet die statische
+     * Analyse als unnoetig, weil sie der falschen Signatur glaubt. Deshalb steht die
+     * Normalisierung hier – einmal, statt in jeder App neu.
+     *
+     * @return array<string, mixed>
+     */
+    public static function rohdaten(mixed $benutzer): array
+    {
+        $roh = is_object($benutzer) && method_exists($benutzer, 'getRaw')
+            ? $benutzer->getRaw()
+            : null;
+
+        return is_array($roh) ? $roh : [];
+    }
+
+    /**
      * Die easyVerein-Gruppen der angemeldeten Person, als flache Liste.
      *
      * Der Provider **wertet sie nicht aus** – die Zuordnung auf App-Rollen ist in jeder App
      * anders. Wer sie braucht, liest sie hier heraus und feuert `BenutzerAngemeldet`.
      *
-     * @param  array<string, mixed>  $userinfo
+     * Nimmt bewusst `mixed`: Die Userinfo kommt von der Gegenseite, und ein fehlender oder
+     * unerwarteter Wert darf keinen Login kosten.
+     *
      * @return list<string>
      */
-    public static function gruppen(array $userinfo): array
+    public static function gruppen(mixed $userinfo): array
     {
+        if (! is_array($userinfo)) {
+            return [];
+        }
+
         $gruppen = $userinfo['groups'] ?? [];
 
         if (! is_array($gruppen)) {
