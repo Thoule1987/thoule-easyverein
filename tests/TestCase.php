@@ -4,6 +4,7 @@ namespace Thoule\EasyVerein\Tests;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
+use Laravel\Socialite\SocialiteServiceProvider;
 use Orchestra\Testbench\TestCase as Basis;
 use Thoule\EasyVerein\EasyVereinServiceProvider;
 
@@ -31,12 +32,18 @@ abstract class TestCase extends Basis
      */
     protected function getPackageProviders($app): array
     {
-        return [EasyVereinServiceProvider::class];
+        // Socialite ist keine harte Abhaengigkeit des Pakets, hier aber noetig: Ohne
+        // seinen Provider gibt es keine Factory, an die sich der `easyverein`-Treiber
+        // haengen koennte.
+        return [SocialiteServiceProvider::class, EasyVereinServiceProvider::class];
     }
 
     protected function defineEnvironment($app): void
     {
         $app['config']->set('database.default', 'testing');
+        $app['config']->set('easyverein.oidc.client_id', 'test-client');
+        $app['config']->set('easyverein.oidc.client_secret', 'test-secret');
+        $app['config']->set('easyverein.oidc.redirect', 'https://app.example/auth/easyverein/callback');
         $app['config']->set('easyverein.pause_sekunden', 0);
         $app['config']->set('easyverein.instanzen', [[
             'name' => 'hauptverein',

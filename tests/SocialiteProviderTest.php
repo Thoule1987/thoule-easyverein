@@ -130,3 +130,38 @@ it('haelt die vollstaendige Userinfo als Rohdaten bereit', function () {
     expect(provider()->userFromToken('t')->getRaw())
         ->toHaveKeys(['sub', 'org_short', 'groups']);
 });
+
+it('wirft mit klarer Meldung, wenn client_id fehlt', function () {
+    // Ohne diese Pruefung baut Socialite die Authorize-URL ohne client_id, schickt die
+    // Person zu easyVerein, und easyVerein antwortet „Missing client_id parameter" – eine
+    // Meldung, die auf die Gegenseite zeigt, obwohl die eigene .env das Problem ist.
+    config()->set('easyverein.oidc.client_id', null);
+
+    expect(fn () => app('Laravel\Socialite\Contracts\Factory')->driver('easyverein'))
+        ->toThrow(EasyVereinException::class, 'client_id');
+});
+
+it('nennt alle fehlenden Zugangsdaten auf einmal', function () {
+    // Sonst arbeitet man sich in drei Anlaeufen durch dieselbe .env.
+    config()->set('easyverein.oidc.client_id', null);
+    config()->set('easyverein.oidc.client_secret', '');
+    config()->set('easyverein.oidc.redirect', null);
+
+    try {
+        app('Laravel\Socialite\Contracts\Factory')->driver('easyverein');
+    } catch (EasyVereinException $e) {
+        expect($e->getMessage())
+            ->toContain('client_id')
+            ->toContain('client_secret')
+            ->toContain('redirect');
+    }
+});
+
+it('baut den Treiber mit vollstaendiger Konfiguration', function () {
+    config()->set('easyverein.oidc.client_id', 'abc');
+    config()->set('easyverein.oidc.client_secret', 'geheim');
+    config()->set('easyverein.oidc.redirect', 'https://app.example/callback');
+
+    expect(app('Laravel\Socialite\Contracts\Factory')->driver('easyverein'))
+        ->toBeInstanceOf(EasyVereinProvider::class);
+});

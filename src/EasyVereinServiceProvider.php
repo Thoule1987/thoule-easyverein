@@ -70,11 +70,30 @@ class EasyVereinServiceProvider extends ServiceProvider
         $this->app->afterResolving(SocialiteFactory::class, function (SocialiteFactory $socialite): void {
             /** @phpstan-var SocialiteManager $socialite */
             $socialite->extend('easyverein', function () use ($socialite) {
-                return $socialite->buildProvider(EasyVereinProvider::class, [
+                $zugangsdaten = [
                     'client_id' => config('easyverein.oidc.client_id'),
                     'client_secret' => config('easyverein.oidc.client_secret'),
                     'redirect' => config('easyverein.oidc.redirect'),
-                ]);
+                ];
+
+                // Fehlende Zugangsdaten hier abfangen, statt sie durchzureichen.
+                //
+                // **Warum das eine eigene Pruefung wert ist.** Ohne sie baut Socialite die
+                // Authorize-URL klaglos ohne `client_id`, schickt die Person zu easyVerein –
+                // und easyVerein antwortet mit „invalid_request: Missing client_id
+                // parameter". Diese Meldung zeigt auf die Gegenseite, obwohl das Problem in
+                // der eigenen `.env` liegt, und kostet garantiert eine Fehlersuche an der
+                // falschen Stelle. Real aufgetreten am 27.07.2026 auf einer dev-Umgebung.
+                $fehlend = array_keys(array_filter($zugangsdaten, fn ($wert): bool => blank($wert)));
+
+                if ($fehlend !== []) {
+                    throw new EasyVereinException(sprintf(
+                        'easyVerein-OIDC ist unvollstaendig konfiguriert: %s. Pruefe die .env der jeweiligen Umgebung.',
+                        implode(', ', array_map(fn (string $k): string => "easyverein.oidc.{$k} fehlt", $fehlend)),
+                    ));
+                }
+
+                return $socialite->buildProvider(EasyVereinProvider::class, $zugangsdaten);
             });
         });
     }
