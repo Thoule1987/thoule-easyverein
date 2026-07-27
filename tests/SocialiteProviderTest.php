@@ -47,6 +47,23 @@ it('fordert die konfigurierten Scopes an', function () {
         ->and($url)->not->toContain('myself');
 });
 
+it('faellt ohne Konfiguration auf openid und profile zurueck, nie auf myself', function () {
+    // Regressionsschutz für die Datensparsamkeit. In der Vorlage stand der Default an einer
+    // Stelle auf `openid,myself` – 47 personenbezogene Felder je Login, von denen die App
+    // nichts speichert. Aufgefallen ist es nie, weil die Tests dort den Config-Wert selbst
+    // setzten, statt zu prüfen, was ohne Konfiguration herauskommt.
+    expect(config('easyverein.oidc.scopes'))->toBe(['openid', 'profile'])
+        ->and(provider()->getScopes())->not->toContain('myself');
+});
+
+it('trimmt Leerzeichen und leere Eintraege in der Scope-Liste', function () {
+    // `EASYVEREIN_SCOPES=openid, profile,` ist ein realistischer Tippfehler; ein leerer
+    // Scope im Request quittiert easyVerein mit einer Fehlerseite statt mit einem Login.
+    config()->set('easyverein.oidc.scopes', ['openid', 'profile']);
+
+    expect(provider()->getScopes())->toBe(['openid', 'profile']);
+});
+
 it('liest das Profilbild aus dem profile-Objekt', function () {
     // Auf oberster Ebene steht nur, was `openid` liefert – das Bild liegt im
     // profile-Objekt (26.07.2026 mit drei echten Logins gemessen).

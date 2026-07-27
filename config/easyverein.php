@@ -105,7 +105,13 @@ return [
         'client_secret' => env('EASYVEREIN_CLIENT_SECRET'),
         'redirect' => env('EASYVEREIN_REDIRECT_URI'),
 
-        'scopes' => array_filter(explode(',', (string) env('EASYVEREIN_SCOPES', 'openid,profile'))),
+        // Getrimmt und leere Einträge entfernt: `EASYVEREIN_SCOPES=openid, profile,` ist ein
+        // realistischer Tippfehler, und ein leerer Scope im Request quittiert easyVerein mit
+        // einer Fehlerseite statt mit einem Login.
+        'scopes' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('EASYVEREIN_SCOPES', 'openid,profile')),
+        ))),
 
         'authorize_url' => 'https://easyverein.com/oauth2/authorize/',
         'token_url' => 'https://easyverein.com/oauth2/token/',
