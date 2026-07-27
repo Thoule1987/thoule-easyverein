@@ -55,6 +55,14 @@ Schedule::command('easyverein:token-refresh')->daily();
 return Socialite::driver('easyverein')->redirect();
 ```
 
+> **Am easyVerein-Client muss „OpenID-Connect" auf *Ja, mit RSA* stehen** – sonst laeuft der
+> Ablauf bis zum Consent-Fenster fehlerfrei durch und erst der Token-Tausch scheitert. Der
+> Fehler sitzt hinter der Stelle, an der man ihn vermutet, und sieht nach einem falschen
+> Client-Secret aus. Gilt **je Client**, also fuer dev und prod getrennt.
+>
+> Reihenfolge beim Einrichten: Redirect-URI → Scope `profile` freischalten → OpenID-Connect
+> auf *Ja, mit RSA* → Secret erzeugen.
+
 **Gruppen → Rollen.** Das Paket wertet `groups` nicht aus – die Zuordnung ist in jeder App
 anders. Wer spatie nutzt, hängt den mitgelieferten Mapper an; alle anderen einen eigenen
 Listener auf dasselbe Event:
